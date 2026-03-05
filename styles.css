@@ -1,0 +1,546 @@
+/* ============================================================
+   CREFC Animated Template System — Design Tokens & Core Styles
+   Corporate Optics / Steven Simmons
+   ============================================================ */
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800;900&display=swap");
+
+/* ── Brand Palette ─────────────────────────────────────────── */
+:root {
+  /* Primary CREFC palette (pulled from the PSD) */
+  --crefc-dark-teal: #264653;
+  --crefc-teal: #2a9d8f;
+  --crefc-light-teal: #5ab5a8;
+  --crefc-orange: #e76f51;
+  --crefc-amber: #f4a261;
+  --crefc-mint-bg: #d4ede6;
+  --crefc-mint-light: #e8f5f0;
+  --crefc-white: #ffffff;
+  --crefc-charcoal: #1a1a2e;
+
+  /* CTA Isolation Color — Von Restorff Effect
+     This MUST only appear on the CTA element */
+  --cta-accent: #e63988; /* Magenta from the PSD sponsor block */
+  --cta-accent-glow: rgba(230, 57, 136, 0.45);
+
+  /* Typography */
+  --font-display: "Outfit", "Inter", sans-serif;
+  --font-body: "Inter", "Outfit", sans-serif;
+
+  /* Easing — Cognitive Ease Principle
+     Smooth cubic-bezier curves feel premium and trustworthy */
+  --ease-smooth: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-power: cubic-bezier(0.22, 0.61, 0.36, 1);
+
+  /* Animation Durations */
+  --dur-fast: 0.4s;
+  --dur-normal: 0.7s;
+  --dur-slow: 1.2s;
+  --dur-entrance: 1s;
+
+  /* Layout */
+  --safe-zone-top: 250px;
+  --safe-zone-bottom: 350px;
+}
+
+/* ── Reset & Base ──────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* ── Template Canvas ───────────────────────────────────────── */
+.template-canvas {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--crefc-mint-bg);
+  font-family: var(--font-display);
+}
+
+.template-canvas.ratio-16x9 {
+  width: 1920px;
+  height: 1080px;
+}
+
+.template-canvas.ratio-9x16 {
+  width: 1080px;
+  height: 1920px;
+}
+
+.template-canvas.ratio-1x1 {
+  width: 1080px;
+  height: 1080px;
+}
+
+.template-canvas.ratio-4x5 {
+  width: 1080px;
+  height: 1350px;
+}
+
+/* ── Background Layer ──────────────────────────────────────── */
+.layer-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.layer-bg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Diagonal texture overlay (fallback if no bg image) */
+.layer-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    135deg,
+    transparent,
+    transparent 80px,
+    rgba(255, 255, 255, 0.06) 80px,
+    rgba(255, 255, 255, 0.06) 81px
+  );
+  pointer-events: none;
+}
+
+/* ── Geometric Shapes Layer ────────────────────────────────── */
+.layer-shapes {
+  position: absolute;
+  z-index: 1;
+}
+
+.layer-shapes img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.shape-top-left {
+  top: 0;
+  left: 0;
+}
+
+.shape-bottom-left {
+  bottom: 0;
+  left: 0;
+}
+
+/* ── Text Content Layer ────────────────────────────────────── */
+.layer-text {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.text-date {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  color: var(--crefc-dark-teal);
+  text-transform: uppercase;
+  opacity: 0;
+}
+
+.text-headline {
+  font-family: var(--font-display);
+  font-weight: 900;
+  line-height: 0.95;
+  color: var(--crefc-dark-teal);
+  text-transform: uppercase;
+  opacity: 0;
+}
+
+.text-venue {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  color: var(--crefc-dark-teal);
+  text-transform: uppercase;
+  opacity: 0;
+}
+
+/* ── Logo Bar Layer ────────────────────────────────────────── */
+.layer-logos {
+  position: absolute;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 40px;
+}
+
+.layer-logos img {
+  height: auto;
+  max-height: 60px;
+}
+
+.partner-sponsor-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.partner-sponsor-label {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--crefc-teal);
+}
+
+.partner-logo-placeholder {
+  width: 120px;
+  height: 50px;
+  background: var(--cta-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 0.1em;
+}
+
+/* ── CTA Layer — Von Restorff Isolation ────────────────────── */
+.layer-cta {
+  position: absolute;
+  z-index: 4;
+  opacity: 0;
+}
+
+.cta-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 40px;
+  background: var(--cta-accent);
+  color: var(--crefc-white);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform var(--dur-fast) var(--ease-smooth),
+    box-shadow var(--dur-fast) var(--ease-smooth);
+}
+
+.cta-button:hover {
+  transform: scale(1.04);
+  box-shadow:
+    0 0 30px var(--cta-accent-glow),
+    0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* CTA Glow Pulse — draws attention via Von Restorff */
+@keyframes cta-glow-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 15px var(--cta-accent-glow);
+  }
+  50% {
+    box-shadow:
+      0 0 40px var(--cta-accent-glow),
+      0 0 60px rgba(230, 57, 136, 0.2);
+  }
+}
+
+.cta-button.pulsing {
+  animation: cta-glow-pulse 2s var(--ease-smooth) infinite;
+}
+
+/* ── Zeigarnik Progress Bar ────────────────────────────────── */
+.zeigarnik-bar {
+  position: absolute;
+  z-index: 5;
+  height: 4px;
+  background: rgba(42, 157, 143, 0.2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.zeigarnik-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--crefc-teal), var(--cta-accent));
+  border-radius: 2px;
+  transition: width 2.5s var(--ease-power);
+}
+
+.zeigarnik-bar-fill.animate {
+  width: 88%; /* Intentionally incomplete — Zeigarnik Effect */
+}
+
+/* ── Directional Motion Lines ──────────────────────────────── */
+.direction-line {
+  position: absolute;
+  z-index: 1;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--crefc-light-teal),
+    transparent
+  );
+  opacity: 0;
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+/* ── Entrance Animation Keyframes ──────────────────────────── */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-120px) rotate(-8deg);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) rotate(0deg);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(80px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInBottom {
+  from {
+    opacity: 0;
+    transform: translateY(80px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes lineReveal {
+  from {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+  to {
+    opacity: 0.5;
+    transform: scaleX(1);
+  }
+}
+
+/* ── Safe Zone Debug Overlay (9:16 only) ───────────────────── */
+.safe-zone-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 99;
+  pointer-events: none;
+  display: none;
+}
+
+.safe-zone-overlay.visible {
+  display: block;
+}
+
+.safe-zone-overlay .top-zone {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--safe-zone-top);
+  background: rgba(231, 111, 81, 0.15);
+  border-bottom: 2px dashed var(--crefc-orange);
+}
+
+.safe-zone-overlay .bottom-zone {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--safe-zone-bottom);
+  background: rgba(231, 111, 81, 0.15);
+  border-top: 2px dashed var(--crefc-orange);
+}
+
+/* ── Preview Page Styles ───────────────────────────────────── */
+body.preview-page {
+  background: #0e0e12;
+  color: #e0e0e0;
+  font-family: var(--font-body);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 20px;
+}
+
+.preview-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.preview-header h1 {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+
+.preview-header p {
+  font-size: 14px;
+  color: #888;
+}
+
+.preview-controls {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.preview-controls button {
+  padding: 10px 24px;
+  border: 1px solid #333;
+  background: #1a1a24;
+  color: #ccc;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  border-radius: 6px;
+}
+
+.preview-controls button:hover {
+  background: #252535;
+  border-color: var(--crefc-teal);
+  color: #fff;
+}
+
+.preview-controls button.active {
+  background: var(--crefc-teal);
+  border-color: var(--crefc-teal);
+  color: #fff;
+}
+
+.preview-viewport {
+  background: #181820;
+  border: 1px solid #2a2a35;
+  border-radius: 12px;
+  padding: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  max-width: 100%;
+}
+
+.preview-viewport iframe {
+  border: none;
+  box-shadow: 0 10px 60px rgba(0, 0, 0, 0.5);
+}
+
+/* Scale controls */
+.scale-controls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  align-items: center;
+}
+
+.scale-controls label {
+  font-size: 12px;
+  color: #888;
+  margin-right: 8px;
+}
+
+.scale-controls input[type="range"] {
+  width: 200px;
+  accent-color: var(--crefc-teal);
+}
+
+.scale-controls .scale-value {
+  font-size: 12px;
+  color: var(--crefc-teal);
+  font-weight: 600;
+  min-width: 40px;
+}
+
+/* Playback controls */
+.playback-controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.playback-controls button {
+  padding: 8px 20px;
+  border: 1px solid #333;
+  background: #1a1a24;
+  color: #ccc;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  border-radius: 6px;
+}
+
+.playback-controls button:hover {
+  background: var(--crefc-dark-teal);
+  border-color: var(--crefc-teal);
+  color: #fff;
+}

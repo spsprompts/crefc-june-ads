@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1080">
+  <title>CREFC 9:16 — Vertical</title>
+  <link rel="stylesheet" href="../styles.css">
+  <style>
+    body { margin:0; padding:0; overflow:hidden; background:transparent; }
+    .canvas {
+      position: relative;
+      width: 1080px; height: 1920px;
+      overflow: hidden;
+      background: #d5e8e0;
+    }
+    /* Layers are 1920x1080 PNGs — we reposition/scale for vertical */
+    .layer {
+      position: absolute;
+      pointer-events: none;
+    }
+    .layer img { display: block; }
+    /* Background: fill the vertical canvas */
+    .layer-bg { top:0; left:0; width:1080px; height:1920px; }
+    .layer-bg img { width:1080px; height:1920px; object-fit:cover; }
+    /* Diagonal lines: cover canvas */
+    .layer-lines { top:0; left:0; width:1080px; height:1920px; }
+    .layer-lines img { width:1920px; height:1080px; transform:rotate(90deg) translateY(-1080px); transform-origin:top left; }
+    /* Shapes: top area — scale the 1920-wide image down to fit top portion */
+    .layer-shapes {
+      top: -40px; left: -60px;
+      width: 700px;
+    }
+    .layer-shapes img { width: 700px; height: auto; }
+    /* Text layers: reposition for vertical layout */
+    .layer-text { left: 0; width: 1080px; }
+    .layer-text img { width: 1080px; height: auto; }
+    /* Date */
+    .layer-date { top: 460px; }
+    /* Headline 1 */
+    .layer-hl1 { top: 490px; }
+    /* Headline 2 */
+    .layer-hl2 { top: 560px; }
+    /* Venue */
+    .layer-venue { top: 640px; }
+    /* Logo */
+    .layer-logo { bottom: 160px; left: 0; width: 1080px; }
+    .layer-logo img { width: 1080px; height: auto; }
+    /* CTA */
+    .cta-wrap {
+      position: absolute;
+      bottom: 420px; left: 50%;
+      transform: translateX(-50%) scale(0.85);
+      pointer-events: auto;
+    }
+    /* Zeigarnik bar */
+    .zeigarnik-bar {
+      position: absolute;
+      bottom: 370px; left: 200px; width: 680px;
+    }
+    /* Safe zones */
+    .safe-zone-overlay {
+      position: absolute; top: 0; left: 0;
+      width: 1080px; height: 1920px;
+      pointer-events: none; display: none;
+    }
+    .safe-zone-overlay.visible { display: block; }
+    .safe-zone-overlay .top-zone {
+      position: absolute; top: 0; left: 0; right: 0; height: 200px;
+      background: rgba(255,0,0,0.15);
+      border-bottom: 2px dashed rgba(255,0,0,0.5);
+    }
+    .safe-zone-overlay .bottom-zone {
+      position: absolute; bottom: 0; left: 0; right: 0; height: 350px;
+      background: rgba(255,0,0,0.15);
+      border-top: 2px dashed rgba(255,0,0,0.5);
+    }
+  </style>
+</head>
+<body>
+
+<div class="canvas" id="canvas">
+
+  <!-- Background -->
+  <div class="layer layer-bg" data-anim="bg" style="opacity:0;">
+    <img src="../02_Source_Assets/PNG_Slices/CREFC-layer2.png" alt="">
+  </div>
+
+  <!-- Diagonal lines -->
+  <div class="layer layer-lines" data-anim="lines" style="opacity:0;">
+    <img src="../02_Source_Assets/PNG_Slices/CREFC-layer1.png" alt="">
+  </div>
+
+  <!-- Geometric shapes -->
+  <div class="layer layer-shapes" data-anim="shapes" style="opacity:0; transform:translateX(-60px);">
+    <img src="../02_Source_Assets/PNG_Slices/CREFC-layer3.png" alt="">
+  </div>
+
+  <!-- Date -->
+  <div class="layer layer-text layer-date" data-anim="text" data-delay="0" style="opacity:0; transform:translateY(25px);">
+    <img src="../02_Source_Assets/PNG_Slices/CREFC-layer8.png" alt="">
+  </div>
+
+  <!-- CREFC ANNUAL -->
+  <div class="layer layer-text layer-hl1" data-anim="text" data-delay="100" style="opacity:0; transform:translateY(30px);">
+    <img src="../02_Source_Assets/PNG_Slices/CREFC-layer7.png" alt="">
+  </div>
+
+  <!-- CONFERENCE -->
+  <div class="layer layer-text layer-hl2" data-anim="text" data-delay="200" style="opacity:0; transform:translateY(30px);">
+    <img src="../02_Source_Assets/PNG_Slices/CREFC-layer6.png" alt="">
+  </div>
+
+  <!-- Venue -->
+  <div class="layer layer-text layer-venue" data-anim="text" data-delay="300" style="opacity:0; transform:translateY(20px);">
+    <img src="../02_Source_Assets/PNG_Slices/CREFC-layer5.png" alt="">
+  </div>
+
+  <!-- Logo -->
+  <div class="layer layer-logo" data-anim="logo" style="opacity:0; transform:translateY(15px);">
+    <img src="../02_Source_Assets/PNG_Slices/CREFC-layer4.png" alt="CRE Finance Council">
+  </div>
+
+  <!-- CTA -->
+  <div class="cta-wrap" data-anim="cta" style="opacity:0;">
+    <button class="cta-button" id="ctaBtn">Register Now</button>
+  </div>
+
+  <div class="zeigarnik-bar">
+    <div class="zeigarnik-bar-fill"></div>
+  </div>
+
+  <div class="safe-zone-overlay">
+    <div class="top-zone"></div>
+    <div class="bottom-zone"></div>
+  </div>
+
+</div>
+
+<script src="../animations.js"></script>
+</body>
+</html>

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CREFC Template Preview — Corporate Optics</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* ── Page Foundation ─────────────── */
+    body {
+      background: #0a0a10;
+      color: #e0e0e0;
+      font-family: 'Inter', 'Outfit', sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 30px 20px 60px;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* ── Animated Diagonal Line Background ── */
+    .bg-lines {
+      position: fixed;
+      top: -50%; left: -50%;
+      width: 200%; height: 200%;
+      background-image: url('02_Source_Assets/PNG_Slices/CREFC-layer1.png');
+      background-size: 1200px auto;
+      background-repeat: repeat;
+      opacity: 0.04;
+      animation: bgDrift 40s linear infinite;
+      pointer-events: none;
+      z-index: 0;
+    }
+    @keyframes bgDrift {
+      0%   { transform: translate(0, 0) rotate(0deg); }
+      50%  { transform: translate(-80px, 60px) rotate(2deg); }
+      100% { transform: translate(0, 0) rotate(0deg); }
+    }
+
+    /* Everything above the bg layer */
+    .page-content { position: relative; z-index: 1; width: 100%; display: flex; flex-direction: column; align-items: center; }
+
+    /* ── Brand Header ────────────────── */
+    .brand-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      margin-bottom: 12px;
+    }
+    .brand-bar img { height: 28px; opacity: 0.85; transition: opacity 0.2s; }
+    .brand-bar img:hover { opacity: 1; }
+    .brand-divider {
+      width: 1px; height: 24px;
+      background: rgba(42,157,143,0.35);
+    }
+
+    .header { text-align: center; margin-bottom: 24px; }
+    .header h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 26px; font-weight: 700;
+      color: #fff; letter-spacing: 0.04em; margin: 0 0 4px;
+    }
+    .header p { font-size: 13px; color: #666; margin: 0; }
+
+    /* ── Ratio Buttons ──────────────── */
+    .ratios {
+      display: flex; gap: 10px; flex-wrap: wrap;
+      justify-content: center; margin-bottom: 18px;
+    }
+    .ratios button {
+      padding: 10px 22px; border: 1px solid #2a2a35;
+      background: #14141e; color: #999;
+      font-family: inherit; font-size: 13px; font-weight: 600;
+      letter-spacing: 0.04em; cursor: pointer;
+      border-radius: 8px; text-align: center;
+      transition: all 0.2s ease;
+    }
+    .ratios button:hover { background: #1e1e2e; border-color: #2A9D8F; color: #ddd; }
+    .ratios button.active { background: #2A9D8F; border-color: #2A9D8F; color: #fff; }
+    .ratios .sub { font-size: 10px; opacity: 0.7; margin-top: 2px; }
+
+    /* ── Controls Bar ───────────────── */
+    .bar {
+      display: flex; gap: 20px; align-items: center;
+      flex-wrap: wrap; justify-content: center; margin-bottom: 16px;
+    }
+    .bar .info { font-size: 12px; color: #555; }
+    .bar .info b { color: #2A9D8F; font-weight: 600; }
+    .bar .zoom { display: flex; gap: 8px; align-items: center; }
+    .bar .zoom label { font-size: 12px; color: #666; }
+    .bar .zoom input { width: 160px; accent-color: #2A9D8F; cursor: pointer; }
+    .bar .zoom .val { font-size: 12px; color: #2A9D8F; font-weight: 600; min-width: 36px; text-align: right; }
+
+    /* ── Playback ────────────────────── */
+    .play-bar {
+      display: flex; gap: 8px; margin-bottom: 24px;
+    }
+    .play-bar button {
+      padding: 7px 18px; border: 1px solid #2a2a35;
+      background: #14141e; color: #aaa;
+      font-family: inherit; font-size: 12px; font-weight: 600;
+      cursor: pointer; border-radius: 6px;
+      transition: all 0.2s ease;
+    }
+    .play-bar button:hover { background: #264653; border-color: #2A9D8F; color: #fff; }
+
+    /* ── The Viewport ────────────────── */
+    .viewport {
+      background: #111118;
+      border: 1px solid #222230;
+      border-radius: 12px;
+      padding: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: width 0.3s ease, height 0.3s ease;
+    }
+    .scaler {
+      overflow: hidden;
+      flex-shrink: 0;
+      transition: width 0.3s ease, height 0.3s ease;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.45);
+      line-height: 0;
+    }
+    .scaler iframe {
+      display: block;
+      border: none;
+    }
+
+    /* ── Corporate Optics Badge ─────── */
+    .co-badge {
+      position: fixed;
+      bottom: 16px; right: 20px;
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 14px 6px 8px;
+      background: rgba(20,20,30,0.75);
+      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(42,157,143,0.25);
+      border-radius: 20px;
+      z-index: 100;
+      text-decoration: none;
+      transition: border-color 0.2s;
+    }
+    .co-badge:hover { border-color: rgba(42,157,143,0.6); }
+    .co-badge img { height: 16px; opacity: 0.7; }
+    .co-badge .co-label {
+      font-family: 'Outfit', sans-serif;
+      font-size: 11px; font-weight: 500;
+      color: #888; letter-spacing: 0.06em;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Animated diagonal-line background texture -->
+  <div class="bg-lines"></div>
+
+  <div class="page-content">
+
+    <!-- Brand Lockup: Corporate Optics + CREFC -->
+    <div class="brand-bar">
+      <img src="02_Source_Assets/Brand_Kit/2025Jan-logo-crefc.png" alt="CRE Finance Council" title="CRE Finance Council">
+    </div>
+
+    <div class="header">
+      <h1>CREFC Animated Template System</h1>
+      <p>Produced by Corporate Optics &middot; Steven Simmons &middot; June 2026</p>
+    </div>
+
+    <div class="ratios" id="ratios">
+      <button class="active" data-r="16x9" data-w="1920" data-h="1080">16:9 Landscape<div class="sub">1920×1080</div></button>
+      <button data-r="9x16" data-w="1080" data-h="1920">9:16 Vertical<div class="sub">1080×1920</div></button>
+      <button data-r="1x1" data-w="1080" data-h="1080">1:1 Square<div class="sub">1080×1080</div></button>
+      <button data-r="4x5" data-w="1080" data-h="1350">4:5 Portrait<div class="sub">1080×1350</div></button>
+    </div>
+
+    <div class="bar">
+      <div class="info">Template: <b id="tName">16×9.html</b></div>
+      <div class="info">Size: <b id="tDims">1920×1080</b></div>
+      <div class="zoom">
+        <label for="zoomSlider">Zoom:</label>
+        <input type="range" id="zoomSlider" min="15" max="100" value="50" title="Zoom">
+        <div class="val" id="zoomVal">50%</div>
+      </div>
+    </div>
+
+    <div class="play-bar">
+      <button onclick="ctrl('play')">▶ Play</button>
+      <button onclick="ctrl('pause')">⏸ Pause</button>
+      <button onclick="ctrl('restart')">↺ Restart</button>
+      <button onclick="toggleSZ()">📐 Safe Zones</button>
+    </div>
+
+    <div class="viewport" id="vp">
+      <div class="scaler" id="sc">
+        <iframe id="fr"
+                src="templates/16x9.html"
+                width="1920" height="1080"
+                title="Template Preview"></iframe>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Corporate Optics Badge -->
+  <div class="co-badge">
+    <img src="02_Source_Assets/Brand_Kit/CO-Primary-logo_white.svg" alt="Corporate Optics" title="Corporate Optics">
+  </div>
+
+<script>
+  const fr = document.getElementById('fr');
+  const sc = document.getElementById('sc');
+  const vp = document.getElementById('vp');
+  const zs = document.getElementById('zoomSlider');
+  const zv = document.getElementById('zoomVal');
+  const tN = document.getElementById('tName');
+  const tD = document.getElementById('tDims');
+
+  let W = 1920, H = 1080, sz = false;
+
+  function zoom(pct) {
+    const s = pct / 100;
+    sc.style.width  = Math.round(W * s) + 'px';
+    sc.style.height = Math.round(H * s) + 'px';
+    fr.style.transform = 'scale(' + s + ')';
+    fr.style.transformOrigin = '0 0';
+    vp.style.width  = Math.round(W * s) + 60 + 'px';
+    vp.style.height = Math.round(H * s) + 60 + 'px';
+    zv.textContent = pct + '%';
+  }
+
+  zs.addEventListener('input', e => zoom(+e.target.value));
+
+  document.querySelectorAll('#ratios button').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('#ratios button').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      W = +b.dataset.w;
+      H = +b.dataset.h;
+      fr.src = 'templates/' + b.dataset.r + '.html';
+      fr.width = W;
+      fr.height = H;
+      tN.textContent = b.dataset.r + '.html';
+      tD.textContent = W + '×' + H;
+      const z = b.dataset.r === '16x9' ? 50 : b.dataset.r === '9x16' ? 35 : 45;
+      zs.value = z;
+      zoom(z);
+    });
+  });
+
+  function ctrl(action) {
+    try {
+      const a = fr.contentWindow.crefcAnimator;
+      if (a) a[action]();
+    } catch(e) {}
+  }
+
+  function toggleSZ() {
+    sz = !sz;
+    try {
+      const o = fr.contentDocument.querySelector('.safe-zone-overlay');
+      if (o) o.classList.toggle('visible', sz);
+    } catch(e) {}
+  }
+
+  zoom(50);
+</script>
+</body>
+</html>

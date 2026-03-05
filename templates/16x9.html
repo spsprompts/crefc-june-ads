@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1920">
+  <title>CREFC 16:9 — Landscape</title>
+  <link rel="stylesheet" href="../styles.css">
+  <style>
+    body { margin:0; padding:0; overflow:hidden; background:transparent; }
+    .canvas {
+      position: relative;
+      width: 1920px; height: 1080px;
+      overflow: hidden;
+      background: #d5e8e0; /* fallback mint */
+    }
+    /* Every layer is a full-canvas absolute overlay */
+    .layer {
+      position: absolute;
+      top: 0; left: 0;
+      width: 1920px; height: 1080px;
+      pointer-events: none;
+    }
+    .layer img {
+      display: block;
+      width: 1920px; height: 1080px;
+      object-fit: cover;
+    }
+    /* CTA — positioned to match the PSD but stays as a live button */
+    .cta-wrap {
+      position: absolute;
+      bottom: 70px; right: 100px;
+      pointer-events: auto;
+    }
+  </style>
+</head>
+<body>
+
+<div class="canvas" id="canvas">
+
+  <!-- L2: Background gradient (opaque — bottommost) -->
+  <div class="layer" data-anim="bg" style="opacity:0;">
+    <img src="../02_Source_Assets/PNG_Slices/CREFC-layer2.png" alt="">
+  </div>
+
+  <!-- L1: Diagonal line overlay (subtle white lines) -->
+  <div class="layer" data-anim="lines" style="opacity:0;">
+    <img src="../02_Source_Assets/PNG_Slices/CREFC-layer1.png" alt="">
+  </div>
+
+  <!-- L3: Geometric shapes (teal & orange arcs) -->
+  <div class="layer" data-anim="shapes" style="opacity:0; transform:translateX(-60px);">
+    <img src="../02_Source_Assets/PNG_Slices/CREFC-layer3.png" alt="">
+  </div>
+
+  <!-- L8: Date text — "JUNE 8-10, 2026" -->
+  <div class="layer" data-anim="text" data-delay="0" style="opacity:0; transform:translateY(20px);">
+    <img src="../02_Source_Assets/PNG_Slices/CREFC-layer8.png" alt="">
+  </div>
+
+  <!-- L7: Headline line 1 — "CREFC ANNUAL" -->
+  <div class="layer" data-anim="text" data-delay="100" style="opacity:0; transform:translateY(30px);">
+    <img src="../02_Source_Assets/PNG_Slices/CREFC-layer7.png" alt="">
+  </div>
+
+  <!-- L6: Headline line 2 — "CONFERENCE" -->
+  <div class="layer" data-anim="text" data-delay="200" style="opacity:0; transform:translateY(30px);">
+    <img src="../02_Source_Assets/PNG_Slices/CREFC-layer6.png" alt="">
+  </div>
+
+  <!-- L5: Venue — "NEW YORK MARRIOTT MARQUIS" -->
+  <div class="layer" data-anim="text" data-delay="300" style="opacity:0; transform:translateY(20px);">
+    <img src="../02_Source_Assets/PNG_Slices/CREFC-layer5.png" alt="">
+  </div>
+
+  <!-- L4: CREFC Logo -->
+  <div class="layer" data-anim="logo" style="opacity:0;">
+    <img src="../02_Source_Assets/PNG_Slices/CREFC-layer4.png" alt="CRE Finance Council">
+  </div>
+
+  <!-- CTA Button (live HTML — Von Restorff Isolation) -->
+  <div class="cta-wrap" data-anim="cta" style="opacity:0; transform:scale(0.85);">
+    <button class="cta-button" id="ctaBtn">Register Now</button>
+  </div>
+
+  <!-- Zeigarnik Progress Bar -->
+  <div class="zeigarnik-bar" style="bottom:40px; left:480px; width:500px;">
+    <div class="zeigarnik-bar-fill"></div>
+  </div>
+
+  <!-- Safe Zone Overlay (hidden by default) -->
+  <div class="safe-zone-overlay">
+    <div class="top-zone"></div>
+    <div class="bottom-zone"></div>
+  </div>
+
+</div>
+
+<script src="../animations.js"></script>
+</body>
+</html>
