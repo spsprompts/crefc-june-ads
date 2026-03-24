@@ -1583,14 +1583,24 @@ async function renderAdToBlob(id, w, h) {
   }
 }
 /* ── Video Export ────────────────────────────────────────────── */
-/* Maps social ad IDs to pre-rendered video files + API route   */
+/* Every format gets a motion graphics MP4 download              */
 const VIDEO_MAP = {
-  '16x9': 'CREFC-Landscape-16x9-1920x1080.mp4',
-  '9x16': 'CREFC-Vertical-9x16-1080x1920.mp4',
-  '1x1':  'CREFC-Square-1x1-1080x1080.mp4',
-  '4x5':  'CREFC-Portrait-4x5-1080x1350.mp4',
+  // Social
+  '16x9': 'CREFC-16x9-1920x1080.mp4',
+  '9x16': 'CREFC-9x16-1080x1920.mp4',
+  '1x1':  'CREFC-1x1-1080x1080.mp4',
+  '4x5':  'CREFC-4x5-1080x1350.mp4',
+  // Web banners
+  'leaderboard': 'CREFC-leaderboard-728x90.mp4',
+  'med-rect':    'CREFC-med-rect-300x250.mp4',
+  'skyscraper':  'CREFC-skyscraper-160x600.mp4',
+  'half-page':   'CREFC-half-page-300x600.mp4',
+  'billboard':   'CREFC-billboard-970x250.mp4',
+  'mobile-lead': 'CREFC-mobile-lead-320x50.mp4',
+  // Email
+  'email-header': 'CREFC-email-header-600x200.mp4',
+  'email-footer': 'CREFC-email-footer-600x100.mp4',
 };
-const SOCIAL_IDS = new Set(Object.keys(VIDEO_MAP));
 
 async function recordAd(id, name, w, h) {
   const card = document.getElementById(`ad-${id}`)?.closest('.ad-card');
@@ -1598,13 +1608,6 @@ async function recordAd(id, name, w, h) {
   const allBtns = actions?.querySelectorAll('.dl-btn');
   const vidBtn = allBtns?.[1];
   if (!vidBtn) return;
-
-  // Only social formats have video
-  if (!SOCIAL_IDS.has(id)) {
-    vidBtn.textContent = 'PNG only for this size';
-    setTimeout(() => { vidBtn.textContent = 'Download Video'; }, 2000);
-    return;
-  }
 
   vidBtn.textContent = 'Generating...';
   vidBtn.style.opacity = '0.6';
