@@ -1428,6 +1428,7 @@ document.querySelectorAll('.ctrl-input, .ctrl-select, .color-swatch, input[type=
 
 /* ── Auto-persist all controls to localStorage ───────────────── */
 function persistTheme() {
+  if (!_initDone) { console.log('[PERSIST] BLOCKED — init not done'); return; }
   const data = {};
   document.querySelectorAll('.ctrl-input, .ctrl-select, .color-swatch, input[type=range]').forEach(el => {
     if (el.id) data[el.id] = el.value;
@@ -1491,9 +1492,11 @@ cloneParentPositions(); // Bootstrap Plus CDs with parent positions
 restoreTheme();
 renderAll();
 
-// NOW init is done — allow saves
-_initDone = true;
-console.log('[INIT] Init complete — saves now enabled');
+// NOW init is done — allow saves after a delay to cover restoreTheme's change event cascade (150ms timeout)
+setTimeout(() => {
+  _initDone = true;
+  console.log('[INIT] Init complete — saves now enabled');
+}, 500);
 
 // Safety net: save on page unload
 window.addEventListener('beforeunload', () => savePositions());
