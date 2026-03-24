@@ -1449,8 +1449,9 @@ function renderCard(spec, theme) {
           <button class="dl-btn" onclick="resetFormatTx('${spec.id}')" style="flex:0 0 auto;background:#333;color:#999;font-weight:600;">↺ Reset</button>
         </div>
       </div>
-      <div class="ad-card-actions">
-        <button class="dl-btn" onclick="downloadAd('${spec.id}','${spec.name}',${spec.w},${spec.h})">Download PNG</button>
+      <div class="ad-card-actions" style="display:flex;gap:6px;">
+        <button class="dl-btn" style="flex:1;" onclick="downloadAd('${spec.id}','${spec.name}',${spec.w},${spec.h})">Download PNG</button>
+        <button class="dl-btn" style="flex:1;background:linear-gradient(135deg,rgba(0,240,255,0.08),rgba(0,200,150,0.08));border-color:rgba(0,240,255,0.15);color:var(--cyan);" onclick="recordAd('${spec.id}','${spec.name}',${spec.w},${spec.h})">Record Video</button>
       </div>
     </div>`;
 }
@@ -1580,6 +1581,120 @@ async function renderAdToBlob(id, w, h) {
   } finally {
     restoreAfterCapture(ctx);
   }
+}
+/* ── Record Video (captures CSS animations as WebM) ─────────── */
+const RECORD_DURATION = 5000;  // 5 seconds — captures all entry animations + drift
+const RECORD_FPS = 12;         // frames per second for html2canvas snapshots
+
+async function recordAd(id, name, w, h) {
+  const el = document.getElementById(`ad-${id}`);
+  if (!el) return;
+  const card = el.closest('.ad-card');
+  const actions = card?.querySelector('.ad-card-actions');
+  const allBtns = actions?.querySelectorAll('.dl-btn');
+  const vidBtn = allBtns?.[1]; // 2nd button in actions = Record Video
+  const pngBtn = allBtns?.[0]; // 1st button = Download PNG
+  if (vidBtn) { vidBtn.textContent = 'Preparing...'; vidBtn.style.opacity = '0.6'; }
+
+  // Disable buttons during recording
+  allBtns?.forEach(b => b.disabled = true);
+
+  // 1) Unscale for full-resolution capture
+  const ctx = prepareForCapture(el);
+
+  // 2) Create offscreen canvas at full ad resolution
+  const recCanvas = document.createElement('canvas');
+  recCanvas.width = w;
+  recCanvas.height = h;
+  const recCtx = recCanvas.getContext('2d');
+
+  // 3) Set up MediaRecorder on canvas stream
+  const stream = recCanvas.captureStream(0); // 0 = manual frame control
+  const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+    ? 'video/webm;codecs=vp9'
+    : 'video/webm;codecs=vp8';
+  const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 4000000 });
+  const chunks = [];
+  recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+
+  // 4) Restart CSS animations by cloning in place
+  restartAnimations(el);
+
+  // 5) Start recording
+  recorder.start();
+  const startTime = performance.now();
+  const frameInterval = 1000 / RECORD_FPS;
+  let lastFrameTime = 0;
+  let frameCount = 0;
+
+  await new Promise((resolve) => {
+    async function captureFrame(timestamp) {
+      const elapsed = performance.now() - startTime;
+
+      // Update button with recording progress
+      if (vidBtn) {
+        const sec = (elapsed / 1000).toFixed(1);
+        const total = (RECORD_DURATION / 1000).toFixed(1);
+        vidBtn.textContent = `Recording ${sec}s / ${total}s`;
+      }
+
+      if (elapsed >= RECORD_DURATION) {
+        resolve();
+        return;
+      }
+
+      // Throttle to target FPS
+      if (timestamp - lastFrameTime >= frameInterval) {
+        lastFrameTime = timestamp;
+        try {
+          const snapshot = await html2canvas(el, {
+            width: w, height: h, scale: 1,
+            useCORS: true, backgroundColor: null, logging: false
+          });
+          recCtx.clearRect(0, 0, w, h);
+          recCtx.drawImage(snapshot, 0, 0, w, h);
+          stream.getVideoTracks()[0].requestFrame();
+          frameCount++;
+        } catch (e) {
+          console.warn('Frame capture error:', e);
+        }
+      }
+
+      requestAnimationFrame(captureFrame);
+    }
+    requestAnimationFrame(captureFrame);
+  });
+
+  // 6) Stop recording and download
+  recorder.stop();
+  await new Promise(r => { recorder.onstop = r; });
+
+  const blob = new Blob(chunks, { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.download = `CREFC-${name.replace(/\s+/g, '-')}-${w}x${h}.webm`;
+  link.href = url;
+  link.click();
+  URL.revokeObjectURL(url);
+
+  // 7) Restore preview scale
+  restoreAfterCapture(ctx);
+  if (vidBtn) {
+    vidBtn.textContent = `Done (${frameCount} frames)`;
+    vidBtn.style.opacity = '';
+    setTimeout(() => { vidBtn.textContent = 'Record Video'; }, 3000);
+  }
+  allBtns?.forEach(b => b.disabled = false);
+
+  console.log(`Recorded ${frameCount} frames, ${(blob.size/1024).toFixed(0)}KB, ${mimeType}`);
+}
+
+/* Restart all CSS animations inside an element */
+function restartAnimations(el) {
+  el.getAnimations({ subtree: true }).forEach(anim => {
+    anim.cancel();
+    anim.play();
+  });
 }
 
 /* ── Download Complete Package (ZIP) ────────────────────────── */
