@@ -1499,6 +1499,25 @@ function prepareForCapture(el) {
     overflowWrap.style.height = el.style.height;
     overflowWrap.style.overflow = 'hidden';
   }
+  // Force ALL CSS animations to their end state so html2canvas captures
+  // visible elements (animations start at opacity:0 which renders white)
+  const frozenAnims = [];
+  el.getAnimations({ subtree: true }).forEach(anim => {
+    const state = { anim, playState: anim.playState, currentTime: anim.currentTime };
+    frozenAnims.push(state);
+    try {
+      const timing = anim.effect?.getComputedTiming?.();
+      if (timing && (timing.iterations === Infinity || timing.endTime === Infinity)) {
+        anim.currentTime = 5000; // jump infinite anims to a visible frame
+        anim.pause();
+      } else {
+        anim.finish();
+      }
+    } catch(e) {
+      try { anim.currentTime = 5000; anim.pause(); } catch(e2) { /* skip */ }
+    }
+  });
+  saved.frozenAnims = frozenAnims;
   return { scaleWrap, overflowWrap, saved };
 }
 
@@ -1508,6 +1527,15 @@ function restoreAfterCapture({ scaleWrap, overflowWrap, saved }) {
     overflowWrap.style.width    = saved.overflowW;
     overflowWrap.style.height   = saved.overflowH;
     overflowWrap.style.overflow = saved.overflow;
+  }
+  // Restore animations to their original state
+  if (saved.frozenAnims) {
+    saved.frozenAnims.forEach(({ anim, playState, currentTime }) => {
+      try {
+        anim.currentTime = currentTime;
+        if (playState === 'running') anim.play();
+      } catch(e) { /* skip */ }
+    });
   }
 }
 
