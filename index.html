@@ -1461,11 +1461,12 @@ function restoreTheme() {
       });
     } catch(e) { console.warn('CD colors restore failed:', e); }
   }
-  // Restore active CD
+  // Restore active CD (including Plus CDs D, E, F)
   const savedCD = localStorage.getItem('crefc-active-cd');
-  if (savedCD && ['A','B','C'].includes(savedCD)) {
+  if (savedCD && ['A','B','C','D','E','F'].includes(savedCD)) {
     currentCD = savedCD;
     document.querySelectorAll('.cd-tab').forEach(t => t.classList.toggle('active', t.dataset.cd === savedCD));
+    console.log('[RESTORE] Active CD restored to:', savedCD);
   }
   // Load the active CD's colors into sidebar
   loadCdColors(currentCD);
