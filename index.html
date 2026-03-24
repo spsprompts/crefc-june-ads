@@ -736,7 +736,14 @@ function savePositions() {
       if (hasData) positions[k] = final;
     });
   });
-  localStorage.setItem('crefc-positions', JSON.stringify(positions));
+  // BULLETPROOF: Never overwrite real data with empty
+  const newJson = JSON.stringify(positions);
+  const existingJson = localStorage.getItem('crefc-positions');
+  if (newJson === '{}' && existingJson && existingJson.length > 2) {
+    console.log(`[SAVE] REFUSED — would overwrite ${existingJson.length} chars with empty {}`);
+    return;
+  }
+  localStorage.setItem('crefc-positions', newJson);
   // VERIFY save worked
   const verify = localStorage.getItem('crefc-positions');
   const photoKeys = Object.keys(positions).filter(k => {
@@ -744,6 +751,17 @@ function savePositions() {
     return v.p1 && !isPhotoDefault(v.p1);
   });
   console.log(`[SAVE] Saved ${Object.keys(positions).length} formats, ${photoKeys.length} with custom photos. Verify: ${verify ? verify.length + ' chars' : 'FAILED!'}`);
+  // Also save photoBaselineTx (caterpillar accumulated translate)
+  const baselineKeys = Object.keys(photoBaselineTx).filter(k => {
+    const b = photoBaselineTx[k];
+    return ['p1','p2','p3'].some(p => b[p] && (b[p].tx !== 0 || b[p].ty !== 0));
+  });
+  if (baselineKeys.length > 0) {
+    const baselineData = {};
+    baselineKeys.forEach(k => baselineData[k] = photoBaselineTx[k]);
+    localStorage.setItem('crefc-photo-baseline', JSON.stringify(baselineData));
+    console.log(`[SAVE] Also saved ${baselineKeys.length} photo baselines`);
+  }
   // Clean up legacy keys
   localStorage.removeItem('crefc-mastered-tx');
   localStorage.removeItem('crefc-format-offsets');
@@ -820,6 +838,17 @@ function loadPositions() {
   } catch(e) {
     console.warn('Position restore failed:', e);
   }
+  // Also restore photoBaselineTx (caterpillar accumulated translate)
+  try {
+    const baseRaw = localStorage.getItem('crefc-photo-baseline');
+    if (baseRaw) {
+      const baseData = JSON.parse(baseRaw);
+      Object.entries(baseData).forEach(([key, val]) => {
+        photoBaselineTx[key] = val;
+      });
+      console.log('[LOAD] Restored photo baselines:', Object.keys(baseData));
+    }
+  } catch(e) { console.warn('Photo baseline restore failed:', e); }
 }
 
 function toggleEdit(specId) {
@@ -1500,7 +1529,23 @@ setTimeout(() => {
 
 // NOTE: No beforeunload save handler — saves are immediate on slider move.
 // A beforeunload handler would cause stale tabs to overwrite active tab's data.
-console.log('[INIT] Page loaded. localStorage crefc-positions:', localStorage.getItem('crefc-positions') ? localStorage.getItem('crefc-positions').length + ' chars' : 'empty');
+
+// ── VISIBLE SAVE INDICATOR ──
+const _dbg = document.createElement('div');
+_dbg.id = 'save-debug';
+_dbg.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#111;color:#0f0;font:11px monospace;padding:4px 12px;z-index:99999;display:flex;gap:20px;';
+document.body.appendChild(_dbg);
+function updateDbg() {
+  const pos = localStorage.getItem('crefc-positions');
+  const cd = localStorage.getItem('crefc-active-cd');
+  const ver = localStorage.getItem('crefc-photo-version');
+  const posLen = pos ? pos.length : 0;
+  const hasPhotos = pos && pos.includes('"p1"') && !pos.includes('"x":50,"y":50,"s":1.5');
+  _dbg.innerHTML = `<span>CD: ${cd || '?'}</span><span>Positions: ${posLen} chars</span><span>Custom photos: ${hasPhotos ? '✅ YES' : '❌ NO'}</span><span>Ver: ${ver}</span><span>Init: ${_initDone ? '✅' : '⏳'}</span>`;
+  _dbg.style.color = posLen > 10 && hasPhotos ? '#0f0' : '#f44';
+}
+updateDbg();
+setInterval(updateDbg, 1000);
 </script>
 </body>
 </html>
