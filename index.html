@@ -1451,7 +1451,7 @@ function renderCard(spec, theme) {
       </div>
       <div class="ad-card-actions" style="display:flex;gap:6px;">
         <button class="dl-btn" style="flex:1;" onclick="downloadAd('${spec.id}','${spec.name}',${spec.w},${spec.h})">Download PNG</button>
-        <button class="dl-btn" style="flex:1;background:linear-gradient(135deg,rgba(0,240,255,0.08),rgba(0,200,150,0.08));border-color:rgba(0,240,255,0.15);color:var(--cyan);" onclick="recordAd('${spec.id}','${spec.name}',${spec.w},${spec.h})">Record Video</button>
+        <button class="dl-btn" style="flex:1;background:linear-gradient(135deg,rgba(0,240,255,0.08),rgba(0,200,150,0.08));border-color:rgba(0,240,255,0.15);color:var(--cyan);" onclick="recordAd('${spec.id}','${spec.name}',${spec.w},${spec.h})">Download Video</button>
       </div>
     </div>`;
 }
@@ -1582,119 +1582,93 @@ async function renderAdToBlob(id, w, h) {
     restoreAfterCapture(ctx);
   }
 }
-/* ── Record Video (captures CSS animations as WebM) ─────────── */
-const RECORD_DURATION = 5000;  // 5 seconds — captures all entry animations + drift
-const RECORD_FPS = 12;         // frames per second for html2canvas snapshots
+/* ── Video Export ────────────────────────────────────────────── */
+/* Maps social ad IDs to pre-rendered video files + API route   */
+const VIDEO_MAP = {
+  '16x9': 'CREFC-Landscape-16x9-1920x1080.mp4',
+  '9x16': 'CREFC-Vertical-9x16-1080x1920.mp4',
+  '1x1':  'CREFC-Square-1x1-1080x1080.mp4',
+  '4x5':  'CREFC-Portrait-4x5-1080x1350.mp4',
+};
+const SOCIAL_IDS = new Set(Object.keys(VIDEO_MAP));
 
 async function recordAd(id, name, w, h) {
-  const el = document.getElementById(`ad-${id}`);
-  if (!el) return;
-  const card = el.closest('.ad-card');
+  const card = document.getElementById(`ad-${id}`)?.closest('.ad-card');
   const actions = card?.querySelector('.ad-card-actions');
   const allBtns = actions?.querySelectorAll('.dl-btn');
-  const vidBtn = allBtns?.[1]; // 2nd button in actions = Record Video
-  const pngBtn = allBtns?.[0]; // 1st button = Download PNG
-  if (vidBtn) { vidBtn.textContent = 'Preparing...'; vidBtn.style.opacity = '0.6'; }
+  const vidBtn = allBtns?.[1];
+  if (!vidBtn) return;
 
-  // Disable buttons during recording
+  // Only social formats have video
+  if (!SOCIAL_IDS.has(id)) {
+    vidBtn.textContent = 'PNG only for this size';
+    setTimeout(() => { vidBtn.textContent = 'Download Video'; }, 2000);
+    return;
+  }
+
+  vidBtn.textContent = 'Generating...';
+  vidBtn.style.opacity = '0.6';
   allBtns?.forEach(b => b.disabled = true);
 
-  // 1) Unscale for full-resolution capture
-  const ctx = prepareForCapture(el);
-
-  // 2) Create offscreen canvas at full ad resolution
-  const recCanvas = document.createElement('canvas');
-  recCanvas.width = w;
-  recCanvas.height = h;
-  const recCtx = recCanvas.getContext('2d');
-
-  // 3) Set up MediaRecorder on canvas stream
-  const stream = recCanvas.captureStream(0); // 0 = manual frame control
-  const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
-    ? 'video/webm;codecs=vp9'
-    : 'video/webm;codecs=vp8';
-  const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 4000000 });
-  const chunks = [];
-  recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
-
-  // 4) Restart CSS animations by cloning in place
-  restartAnimations(el);
-
-  // 5) Start recording
-  recorder.start();
-  const startTime = performance.now();
-  const frameInterval = 1000 / RECORD_FPS;
-  let lastFrameTime = 0;
-  let frameCount = 0;
-
-  await new Promise((resolve) => {
-    async function captureFrame(timestamp) {
-      const elapsed = performance.now() - startTime;
-
-      // Update button with recording progress
-      if (vidBtn) {
-        const sec = (elapsed / 1000).toFixed(1);
-        const total = (RECORD_DURATION / 1000).toFixed(1);
-        vidBtn.textContent = `Recording ${sec}s / ${total}s`;
-      }
-
-      if (elapsed >= RECORD_DURATION) {
-        resolve();
-        return;
-      }
-
-      // Throttle to target FPS
-      if (timestamp - lastFrameTime >= frameInterval) {
-        lastFrameTime = timestamp;
-        try {
-          const snapshot = await html2canvas(el, {
-            width: w, height: h, scale: 1,
-            useCORS: true, backgroundColor: null, logging: false
-          });
-          recCtx.clearRect(0, 0, w, h);
-          recCtx.drawImage(snapshot, 0, 0, w, h);
-          stream.getVideoTracks()[0].requestFrame();
-          frameCount++;
-        } catch (e) {
-          console.warn('Frame capture error:', e);
+  try {
+    // 1. Try API route (dynamic generation with current theme)
+    const theme = getTheme();
+    const resp = await fetch('/api/crefc/export-video', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ratio: id,
+        theme: {
+          confName:  theme.confName,
+          confDate:  theme.confDate,
+          confVenue: theme.confVenue,
+          ctaText:   theme.ctaText,
+          ctaColor:  theme.cta,
         }
-      }
+      })
+    });
 
-      requestAnimationFrame(captureFrame);
+    if (resp.ok) {
+      vidBtn.textContent = 'Downloading...';
+      const blob = await resp.blob();
+      triggerDownload(blob, `CREFC-${name.replace(/\s+/g,'-')}-${w}x${h}.mp4`, 'video/mp4');
+      vidBtn.textContent = 'Done';
+      vidBtn.style.opacity = '';
+      setTimeout(() => { vidBtn.textContent = 'Download Video'; }, 3000);
+      allBtns?.forEach(b => b.disabled = false);
+      return;
     }
-    requestAnimationFrame(captureFrame);
-  });
-
-  // 6) Stop recording and download
-  recorder.stop();
-  await new Promise(r => { recorder.onstop = r; });
-
-  const blob = new Blob(chunks, { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.download = `CREFC-${name.replace(/\s+/g, '-')}-${w}x${h}.webm`;
-  link.href = url;
-  link.click();
-  URL.revokeObjectURL(url);
-
-  // 7) Restore preview scale
-  restoreAfterCapture(ctx);
-  if (vidBtn) {
-    vidBtn.textContent = `Done (${frameCount} frames)`;
-    vidBtn.style.opacity = '';
-    setTimeout(() => { vidBtn.textContent = 'Record Video'; }, 3000);
+    console.warn('API returned', resp.status, '— falling back to pre-rendered');
+  } catch (e) {
+    console.warn('API unavailable — using pre-rendered video:', e.message);
   }
-  allBtns?.forEach(b => b.disabled = false);
 
-  console.log(`Recorded ${frameCount} frames, ${(blob.size/1024).toFixed(0)}KB, ${mimeType}`);
+  // 2. Fallback: serve pre-rendered static file
+  vidBtn.textContent = 'Downloading...';
+  try {
+    const staticUrl = `/crefc/exports/${VIDEO_MAP[id]}`;
+    const resp = await fetch(staticUrl);
+    if (!resp.ok) throw new Error(`Static file not found: ${staticUrl}`);
+    const blob = await resp.blob();
+    triggerDownload(blob, VIDEO_MAP[id], 'video/mp4');
+    vidBtn.textContent = 'Done';
+  } catch (e) {
+    vidBtn.textContent = 'Export failed';
+    console.error('Video export failed:', e);
+  }
+
+  vidBtn.style.opacity = '';
+  setTimeout(() => { vidBtn.textContent = 'Download Video'; }, 3000);
+  allBtns?.forEach(b => b.disabled = false);
 }
 
-/* Restart all CSS animations inside an element */
-function restartAnimations(el) {
-  el.getAnimations({ subtree: true }).forEach(anim => {
-    anim.cancel();
-    anim.play();
-  });
+function triggerDownload(blob, filename, mimeType) {
+  const url = URL.createObjectURL(new Blob([blob], { type: mimeType }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 /* ── Download Complete Package (ZIP) ────────────────────────── */
