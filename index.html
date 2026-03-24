@@ -1467,7 +1467,7 @@ function renderAll() {
 }
 
 /* ── Download ────────────────────────────────────────────────── */
-/* html2canvas with timeout + CORS fallback */
+/* html2canvas with timeout */
 function renderWithTimeout(el, opts, ms = 30000) {
   return Promise.race([
     html2canvas(el, opts),
@@ -1475,16 +1475,53 @@ function renderWithTimeout(el, opts, ms = 30000) {
   ]);
 }
 
+/*
+ * Temporarily "unscale" the ad for capture:
+ * The ad element (ad-${id}) is full-size (e.g. 1080×1080)
+ * but lives inside a scaled-down wrapper for preview.
+ * html2canvas respects CSS transforms, so we must remove them
+ * before capture and restore after.
+ */
+function prepareForCapture(el) {
+  const scaleWrap = el.parentElement;         // div with transform:scale(...)
+  const overflowWrap = scaleWrap?.parentElement; // div with overflow:hidden, small dims
+  const saved = {};
+  if (scaleWrap) {
+    saved.scaleTransform = scaleWrap.style.transform;
+    scaleWrap.style.transform = 'none';
+  }
+  if (overflowWrap) {
+    saved.overflowW = overflowWrap.style.width;
+    saved.overflowH = overflowWrap.style.height;
+    saved.overflow  = overflowWrap.style.overflow;
+    overflowWrap.style.width  = el.style.width;
+    overflowWrap.style.height = el.style.height;
+    overflowWrap.style.overflow = 'hidden';
+  }
+  return { scaleWrap, overflowWrap, saved };
+}
+
+function restoreAfterCapture({ scaleWrap, overflowWrap, saved }) {
+  if (scaleWrap)    scaleWrap.style.transform = saved.scaleTransform;
+  if (overflowWrap) {
+    overflowWrap.style.width    = saved.overflowW;
+    overflowWrap.style.height   = saved.overflowH;
+    overflowWrap.style.overflow = saved.overflow;
+  }
+}
+
 async function downloadAd(id, name, w, h) {
   const el = document.getElementById(`ad-${id}`);
   if (!el) return;
   const card = el.closest('.ad-card');
-  const btn = card?.querySelector('.dl-btn');
+  const btn = card?.querySelector('.ad-card-actions > .dl-btn');
   if (btn) { btn.textContent = 'Rendering...'; btn.style.opacity = '0.5'; }
+
+  const ctx = prepareForCapture(el);
   try {
     const canvas = await renderWithTimeout(el, {
       width:w, height:h, scale:2,
-      useCORS:true, allowTaint:true,
+      useCORS:true,
       backgroundColor:null, logging:false
     });
     const link = document.createElement('a');
@@ -1495,6 +1532,8 @@ async function downloadAd(id, name, w, h) {
   } catch(e) {
     console.error('Download failed:', e);
     if (btn) { btn.textContent = 'Failed — Retry'; btn.style.opacity = ''; setTimeout(() => { btn.textContent = 'Download PNG'; }, 4000); }
+  } finally {
+    restoreAfterCapture(ctx);
   }
 }
 
@@ -1527,16 +1566,19 @@ async function downloadSection(section) {
 async function renderAdToBlob(id, w, h) {
   const el = document.getElementById(`ad-${id}`);
   if (!el) return null;
+  const ctx = prepareForCapture(el);
   try {
     const canvas = await renderWithTimeout(el, {
       width:w, height:h, scale:2,
-      useCORS:true, allowTaint:true,
+      useCORS:true,
       backgroundColor:null, logging:false
     });
     return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
   } catch(e) {
     console.error(`Render failed for ${id}:`, e);
     return null;
+  } finally {
+    restoreAfterCapture(ctx);
   }
 }
 
