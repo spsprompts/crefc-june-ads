@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Montserrat:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&family=Outfit:wght@200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
     :root {
       --bg: #050505;
@@ -365,6 +366,38 @@
     }
     .dashboard-footer a { color:var(--crefc-teal); text-decoration:none; }
 
+    /* Section download buttons */
+    .section-dl {
+      text-align:center; padding:8px 0 20px;
+    }
+    .section-dl-btn {
+      background:rgba(0,240,255,0.04); border:1px solid rgba(0,240,255,0.12);
+      color:var(--text-dim); font:500 12px/1 'Outfit', sans-serif;
+      padding:10px 28px; border-radius:6px; cursor:pointer;
+      transition:all 0.2s ease; letter-spacing:0.5px;
+    }
+    .section-dl-btn:hover {
+      background:rgba(0,240,255,0.08); color:var(--text); border-color:rgba(0,240,255,0.25);
+      box-shadow:0 0 12px rgba(0,240,255,0.1);
+    }
+    .section-dl-btn:disabled {
+      opacity:0.5; cursor:wait;
+    }
+
+    /* Save flash on diagnostics bar */
+    @keyframes saveFlash {
+      0% { box-shadow:0 0 0 0 rgba(0,240,155,0.4); }
+      50% { box-shadow:0 0 8px 2px rgba(0,240,155,0.3); }
+      100% { box-shadow:0 0 0 0 rgba(0,240,155,0); }
+    }
+    .save-flash { animation:saveFlash 0.6s ease; }
+
+    /* Package download progress */
+    .pkg-progress {
+      display:inline-block; font:500 11px/1 'Outfit', sans-serif;
+      color:var(--cyan); margin-left:8px;
+    }
+
     @media (max-width:900px) {
       .dashboard { grid-template-columns:1fr; }
       .controls { position:static; max-height:none; border-right:none; border-bottom:1px solid var(--border); }
@@ -509,6 +542,8 @@
         <button class="ctrl-btn" onclick="saveTheme()">Save Theme</button>
         <div style="height:8px;"></div>
         <button class="ctrl-btn" onclick="renderAll()">Apply Changes</button>
+        <div style="height:6px;"></div>
+        <button class="ctrl-btn" onclick="downloadPackage()" id="pkgBtn" style="background:linear-gradient(135deg,rgba(0,240,255,0.08),rgba(0,200,150,0.08));border-color:rgba(0,240,255,0.15);">📦 Download Complete Package</button>
       </div>
     </aside>
 
@@ -516,10 +551,13 @@
     <main class="canvas-area">
       <h2>Social Media Formats</h2>
       <div class="ad-grid" id="socialGrid"></div>
+      <div class="section-dl"><button class="section-dl-btn" onclick="downloadSection('social')">⬇ Download All Social</button></div>
       <h2>IAB Web Advertising</h2>
       <div class="ad-grid" id="webGrid"></div>
+      <div class="section-dl"><button class="section-dl-btn" onclick="downloadSection('web')">⬇ Download All Web Ads</button></div>
       <h2>Email Marketing</h2>
       <div class="ad-grid" id="emailGrid"></div>
+      <div class="section-dl"><button class="section-dl-btn" onclick="downloadSection('email')">⬇ Download All Email</button></div>
       <div class="dashboard-footer">
         <strong>Corporate Optics</strong> · Steven Simmons · CREFC 2026<br>
         <a href="/briefings/">← Back to Briefing Center</a>
@@ -1425,6 +1463,72 @@ async function downloadAll() {
   for (const s of all) { await downloadAd(s.id, s.name, s.w, s.h); await new Promise(r => setTimeout(r, 600)); }
 }
 
+/* ── Per-section download ───────────────────────────────────── */
+async function downloadSection(section) {
+  const specs = AD_SPECS[section];
+  if (!specs) return;
+  const btns = document.querySelectorAll('.section-dl-btn');
+  btns.forEach(b => b.disabled = true);
+  for (const s of specs) {
+    await downloadAd(s.id, s.name, s.w, s.h);
+    await new Promise(r => setTimeout(r, 500));
+  }
+  btns.forEach(b => b.disabled = false);
+}
+
+/* ── Render ad to blob (shared helper) ──────────────────────── */
+async function renderAdToBlob(id, w, h) {
+  const el = document.getElementById(`ad-${id}`);
+  if (!el) return null;
+  const canvas = await html2canvas(el, { width:w, height:h, scale:2, useCORS:true, backgroundColor:null, logging:false });
+  return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+}
+
+/* ── Download Complete Package (ZIP) ────────────────────────── */
+async function downloadPackage() {
+  const btn = document.getElementById('pkgBtn');
+  const origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '⏳ Rendering...';
+
+  const zip = new JSZip();
+  const cdName = { A:'Classic', B:'Skyline', C:'DarkLuxe', D:'Classic-Plus', E:'Skyline-Plus', F:'DarkLuxe-Plus' }[currentCD] || currentCD;
+  const sections = [
+    { key:'social', folder:'Social_Media', specs:AD_SPECS.social },
+    { key:'web',    folder:'Web_Ads',      specs:AD_SPECS.web },
+    { key:'email',  folder:'Email',        specs:AD_SPECS.email }
+  ];
+
+  let done = 0;
+  const total = [...AD_SPECS.social, ...AD_SPECS.web, ...AD_SPECS.email].length;
+
+  for (const { folder, specs } of sections) {
+    const subFolder = zip.folder(folder);
+    for (const s of specs) {
+      done++;
+      btn.textContent = `⏳ ${done}/${total}`;
+      const blob = await renderAdToBlob(s.id, s.w, s.h);
+      if (blob) {
+        const fname = `CREFC-${cdName}-${s.name.replace(/[\s\/]+/g,'-')}-${s.w}x${s.h}.png`;
+        subFolder.file(fname, blob);
+      }
+      await new Promise(r => setTimeout(r, 200));
+    }
+  }
+
+  btn.textContent = '📦 Zipping...';
+  const content = await zip.generateAsync({ type:'blob' });
+  const link = document.createElement('a');
+  link.download = `CREFC-${cdName}-Package.zip`;
+  link.href = URL.createObjectURL(content);
+  link.click();
+  URL.revokeObjectURL(link.href);
+
+  btn.textContent = '✅ Done';
+  btn.disabled = false;
+  setTimeout(() => { btn.textContent = origText; }, 3000);
+}
+
 function saveTheme() {
   const key = document.getElementById('presetSelect').value;
   localStorage.setItem(`crefc-theme-${key}`, JSON.stringify(getTheme()));
@@ -1488,6 +1592,9 @@ function persistTheme() {
   } else {
     localStorage.removeItem('crefc-format-offsets');
   }
+  // Save flash feedback in diagnostics bar
+  const posPill = document.querySelector('.optics-pill:nth-child(2)');
+  if (posPill) { posPill.classList.remove('save-flash'); void posPill.offsetWidth; posPill.classList.add('save-flash'); }
 }
 
 function restoreTheme() {
