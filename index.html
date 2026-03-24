@@ -983,7 +983,7 @@ function cloneParentPositions() {
       }
     });
   });
-  savePositions();
+  // Do NOT call savePositions() here — this runs during init and would overwrite loaded data
   renderAll();
   console.log('✓ Cloned parent positions to Plus CDs');
 }
@@ -1352,7 +1352,9 @@ function renderCard(spec, theme) {
 
 /* ── Render all ──────────────────────────────────────────────── */
 function renderAll() {
-  savePositions(); // Persist current positions before re-rendering
+  // NOTE: Do NOT call savePositions() here — it runs 3x during init 
+  // and overwrites loaded data with defaults. Save is handled by:
+  // slider auto-save, Master Positions, and panel close.
   const t = getTheme();
   document.getElementById('socialGrid').innerHTML = AD_SPECS.social.map(s => renderCard(s, t)).join('');
   document.getElementById('webGrid').innerHTML = AD_SPECS.web.map(s => renderCard(s, t)).join('');
