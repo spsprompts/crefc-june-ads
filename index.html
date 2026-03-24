@@ -632,9 +632,8 @@ function updateFormatTx(specId, elKey, axis, value) {
   }
   if (photoEls.includes(elKey)) console.log('[DEBUG] After update', k, elKey, JSON.stringify(formatOffset[k][elKey]));
   renderSingleAd(specId);
-  // Auto-save so slider tweaks survive refresh
-  clearTimeout(window._txSaveTimer);
-  window._txSaveTimer = setTimeout(() => savePositions(), 300);
+  // Save IMMEDIATELY (no debounce) so data persists even if user refreshes instantly
+  savePositions();
 }
 
 /* ── Master: fold offsets into baseline, reset sliders to zero ── */
@@ -697,7 +696,9 @@ function resetFormatTx(specId) {
 }
 
 /* ── Single-key position save/load — per-CD storage ── */
+let _initDone = false; // Guard: prevent saves during page init
 function savePositions() {
+  if (!_initDone) { console.log('[SAVE] BLOCKED — init not done'); return; }
   const positions = {};
   // Save all CD-prefixed entries from formatBaseline + formatOffset
   const allSpecs = [...AD_SPECS.social, ...AD_SPECS.web, ...AD_SPECS.email];
@@ -736,12 +737,13 @@ function savePositions() {
     });
   });
   localStorage.setItem('crefc-positions', JSON.stringify(positions));
-  // Debug: log what got saved for photos
-  Object.entries(positions).forEach(([key, val]) => {
-    if (val.p1 && !isPhotoDefault(val.p1)) {
-      console.log('[DEBUG] SAVED', key, 'p1:', JSON.stringify(val.p1), 'p2:', JSON.stringify(val.p2), 'p3:', JSON.stringify(val.p3));
-    }
+  // VERIFY save worked
+  const verify = localStorage.getItem('crefc-positions');
+  const photoKeys = Object.keys(positions).filter(k => {
+    const v = positions[k];
+    return v.p1 && !isPhotoDefault(v.p1);
   });
+  console.log(`[SAVE] Saved ${Object.keys(positions).length} formats, ${photoKeys.length} with custom photos. Verify: ${verify ? verify.length + ' chars' : 'FAILED!'}`);
   // Clean up legacy keys
   localStorage.removeItem('crefc-mastered-tx');
   localStorage.removeItem('crefc-format-offsets');
@@ -749,7 +751,7 @@ function savePositions() {
 
 function loadPositions() {
   // Version check: auto-clear stale data when photo defaults change
-  const PHOTO_VERSION = 'v2-centered';
+  const PHOTO_VERSION = 'v3-init-guard';
   if (localStorage.getItem('crefc-photo-version') !== PHOTO_VERSION) {
     console.log('[MIGRATE] Clearing old photo data for version', PHOTO_VERSION);
     localStorage.removeItem('crefc-positions');
@@ -759,6 +761,7 @@ function loadPositions() {
     return; // Start fresh
   }
   let raw = localStorage.getItem('crefc-positions');
+  console.log(`[LOAD] localStorage has ${raw ? raw.length + ' chars' : 'NO DATA'} for crefc-positions`);
   if (!raw) return;
   try {
     const stored = JSON.parse(raw);
@@ -1486,6 +1489,14 @@ loadPositions();
 cloneParentPositions(); // Bootstrap Plus CDs with parent positions
 restoreTheme();
 renderAll();
+
+// NOW init is done — allow saves
+_initDone = true;
+console.log('[INIT] Init complete — saves now enabled');
+
+// Safety net: save on page unload
+window.addEventListener('beforeunload', () => savePositions());
+console.log('[INIT] Page loaded. localStorage crefc-positions:', localStorage.getItem('crefc-positions') ? localStorage.getItem('crefc-positions').length + ' chars' : 'empty');
 </script>
 </body>
 </html>
