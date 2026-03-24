@@ -1498,8 +1498,8 @@ setTimeout(() => {
   console.log('[INIT] Init complete — saves now enabled');
 }, 500);
 
-// Safety net: save on page unload
-window.addEventListener('beforeunload', () => savePositions());
+// NOTE: No beforeunload save handler — saves are immediate on slider move.
+// A beforeunload handler would cause stale tabs to overwrite active tab's data.
 console.log('[INIT] Page loaded. localStorage crefc-positions:', localStorage.getItem('crefc-positions') ? localStorage.getItem('crefc-positions').length + ' chars' : 'empty');
 </script>
 </body>
