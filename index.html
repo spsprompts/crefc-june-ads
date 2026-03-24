@@ -1216,11 +1216,18 @@ function buildAd(spec, theme) {
     const stdComp = 'mask-composite:intersect;';
     // Tall formats: radial + top fade only (side fade creates dark stripe on narrow widths)
     // Wide/square: radial + top + side edge fades
+    // Tiny (h<=60): minimal mask — no top fade, wide ellipse so heads aren't clipped
+    // Short-wide (h<=120): reduced top fade to preserve head room
+    const isShortWide = isWide && h <= 120;
     const photoMask = isTall
       ? `-webkit-mask-image:radial-gradient(ellipse 100% 90% at 50% 45%, black 35%, transparent 75%),${topFade};${webkitComp}mask-image:radial-gradient(ellipse 100% 90% at 50% 45%, black 35%, transparent 75%);${stdComp}`
-      : isWide
-        ? `-webkit-mask-image:radial-gradient(ellipse 90% 110% at 60% 50%, black 30%, transparent 70%),${topFade},${sideFade};${webkitComp}mask-image:radial-gradient(ellipse 90% 110% at 60% 50%, black 30%, transparent 70%);${stdComp}`
-        : `-webkit-mask-image:radial-gradient(ellipse 100% 100% at 55% 50%, black 30%, transparent 70%),${topFade},${sideFade};${webkitComp}mask-image:radial-gradient(ellipse 100% 100% at 55% 50%, black 30%, transparent 70%);${stdComp}`;
+      : isTiny
+        ? `-webkit-mask-image:radial-gradient(ellipse 95% 160% at 60% 50%, black 50%, transparent 85%),${sideFade};${webkitComp}mask-image:radial-gradient(ellipse 95% 160% at 60% 50%, black 50%, transparent 85%);${stdComp}`
+        : isShortWide
+          ? `-webkit-mask-image:radial-gradient(ellipse 90% 140% at 60% 50%, black 40%, transparent 75%),linear-gradient(to bottom, transparent 0%, black 5%),${sideFade};${webkitComp}mask-image:radial-gradient(ellipse 90% 140% at 60% 50%, black 40%, transparent 75%);${stdComp}`
+          : isWide
+            ? `-webkit-mask-image:radial-gradient(ellipse 90% 110% at 60% 50%, black 30%, transparent 70%),${topFade},${sideFade};${webkitComp}mask-image:radial-gradient(ellipse 90% 110% at 60% 50%, black 30%, transparent 70%);${stdComp}`
+            : `-webkit-mask-image:radial-gradient(ellipse 100% 100% at 55% 50%, black 30%, transparent 70%),${topFade},${sideFade};${webkitComp}mask-image:radial-gradient(ellipse 100% 100% at 55% 50%, black 30%, transparent 70%);${stdComp}`;
 
     // Stack all 3 photos with per-photo position from transforms
     const kbDirs = [
@@ -1235,8 +1242,9 @@ function buildAd(spec, theme) {
     const pBase = photoBaselineTx[pBaseK] || ZERO_PHOTO_BASE();
     photoLayer = CONF_PHOTOS.map((src, i) => {
       const pt = photoTx[photoKeys[i]] || { x:50, y:50, s:1.5 };
-      // Scale: minimum 1.5 so there's always good panning room (25% per side)
-      const s = Math.max(pt.s, 1.5);
+      // Scale: higher minimum for short banners so photos have vertical room
+      const minScale = isTiny ? 2.5 : isShortWide ? 2.0 : 1.5;
+      const s = Math.max(pt.s, minScale);
       // Slider translate: (50 - x) maps slider to translate %
       // Multiplier 1.0 = max safe range within scale excess
       const sliderTxX = (50 - pt.x) * (s - 1) * 1.0;
@@ -1248,7 +1256,9 @@ function buildAd(spec, theme) {
       // WRAPPER div handles positioning transform (doesn't conflict with KenBurns on img)
       const wrapStyle = `position:absolute;inset:0;width:100%;height:100%;transform:translate(${txX}%,${txY}%) scale(${s.toFixed(2)});z-index:2;pointer-events:none;overflow:hidden;`;
       // IMG handles object-fit:cover + opacity animation + KenBurns animation
-      const imgStyle = `width:100%;height:100%;object-fit:cover;${photoMask}opacity:0;animation:photoCarousel${i+1} 15s ease infinite,${kbDirs[i]};`;
+      // Short banners: object-position:top prioritizes showing heads over centering
+      const objPos = (isTiny || isShortWide) ? 'object-position:top center;' : '';
+      const imgStyle = `width:100%;height:100%;object-fit:cover;${objPos}${photoMask}opacity:0;animation:photoCarousel${i+1} 15s ease infinite,${kbDirs[i]};`;
       return `<div style="${wrapStyle}"><img src="${src}" data-photo="${i}" style="${imgStyle}"></div>`;
     }).join('\n      ');
   }
