@@ -1544,14 +1544,14 @@ _dbgStyle.textContent = `
     backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
     border-top:1px solid rgba(0,240,255,0.12);
     padding:6px 20px;
-    display:flex;align-items:center;gap:24px;
+    display:flex;align-items:center;gap:16px;
     font-family:'Outfit','Inter',sans-serif;
     box-shadow:0 -4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(0,240,255,0.06);
   }
   #optics-diagnostics .diag-brand {
     font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;
     color:rgba(0,240,255,0.5);
-    border-right:1px solid rgba(255,255,255,0.06);padding-right:16px;margin-right:4px;
+    border-right:1px solid rgba(255,255,255,0.06);padding-right:14px;margin-right:2px;
     white-space:nowrap;
   }
   #optics-diagnostics .diag-item {
@@ -1561,14 +1561,35 @@ _dbgStyle.textContent = `
     font-size:8px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;
     color:rgba(255,255,255,0.28);
   }
-  #optics-diagnostics .diag-value {
+  #optics-diagnostics .diag-pill {
+    display:inline-flex;align-items:center;gap:5px;
+    padding:3px 10px 3px 8px;border-radius:20px;
+    background:rgba(255,255,255,0.03);
+    border:1px solid rgba(255,255,255,0.06);
     font-size:11px;font-weight:500;letter-spacing:0.03em;
     color:rgba(255,255,255,0.85);
     font-family:'Inter',sans-serif;
+    transition:box-shadow 0.3s ease, border-color 0.3s ease;
+  }
+  #optics-diagnostics .diag-pill.glow-green {
+    border-color:rgba(0,200,150,0.2);
+    box-shadow:0 0 8px rgba(0,200,150,0.08), inset 0 0 6px rgba(0,200,150,0.04);
+  }
+  #optics-diagnostics .diag-pill.glow-cyan {
+    border-color:rgba(0,240,255,0.2);
+    box-shadow:0 0 8px rgba(0,240,255,0.08), inset 0 0 6px rgba(0,240,255,0.04);
+  }
+  #optics-diagnostics .diag-pill.glow-amber {
+    border-color:rgba(255,191,0,0.2);
+    box-shadow:0 0 8px rgba(255,191,0,0.08), inset 0 0 6px rgba(255,191,0,0.04);
+  }
+  #optics-diagnostics .diag-pill.glow-red {
+    border-color:rgba(255,68,68,0.2);
+    box-shadow:0 0 8px rgba(255,68,68,0.08), inset 0 0 6px rgba(255,68,68,0.04);
   }
   #optics-diagnostics .diag-dot {
-    width:6px;height:6px;border-radius:50%;flex-shrink:0;
-    box-shadow:0 0 6px currentColor;
+    width:5px;height:5px;border-radius:50%;flex-shrink:0;
+    box-shadow:0 0 5px currentColor;
   }
   #optics-diagnostics .diag-dot.green { color:#00c896;background:#00c896; }
   #optics-diagnostics .diag-dot.amber { color:#ffbf00;background:#ffbf00; }
@@ -1600,20 +1621,18 @@ function updateDbg() {
   const sysOk = _initDone && hasPositions;
 
   _dbg.innerHTML = `
-    <span class="diag-brand">⬡ Optics Diagnostics</span>
+    <span class="diag-brand">Optics Diagnostics</span>
     <span class="diag-item">
       <span class="diag-label">Direction</span>
-      <span class="diag-value">${cdName}</span>
+      <span class="diag-pill glow-cyan"><span class="diag-dot cyan"></span>${cdName}</span>
     </span>
     <span class="diag-item">
-      <span class="diag-dot ${hasPositions ? 'green' : 'red'}"></span>
       <span class="diag-label">Positions</span>
-      <span class="diag-value">${posLen}</span>
+      <span class="diag-pill ${hasPositions ? 'glow-green' : 'glow-red'}"><span class="diag-dot ${hasPositions ? 'green' : 'red'}"></span>${posLen}</span>
     </span>
     <span class="diag-item">
-      <span class="diag-dot ${hasMastered ? 'cyan' : 'amber'}"></span>
       <span class="diag-label">Baseline</span>
-      <span class="diag-value">${hasMastered ? baseLen : '—'}</span>
+      <span class="diag-pill ${hasMastered ? 'glow-cyan' : 'glow-amber'}"><span class="diag-dot ${hasMastered ? 'cyan' : 'amber'}"></span>${hasMastered ? baseLen : '—'}</span>
     </span>
     <span class="diag-status">
       <span class="diag-dot ${sysOk ? 'green' : 'amber'}"></span>
