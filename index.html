@@ -1496,7 +1496,7 @@ function restoreTheme() {
   if (cdRaw) {
     try {
       const stored = JSON.parse(cdRaw);
-      ['A','B','C'].forEach(cd => {
+      ['A','B','C','D','E','F'].forEach(cd => {
         if (stored[cd]) Object.assign(cdColors[cd], stored[cd]);
       });
     } catch(e) { console.warn('CD colors restore failed:', e); }
