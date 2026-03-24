@@ -1484,8 +1484,8 @@ function renderWithTimeout(el, opts, ms = 30000) {
  * before capture and restore after.
  */
 function prepareForCapture(el) {
-  const scaleWrap = el.parentElement;         // div with transform:scale(...)
-  const overflowWrap = scaleWrap?.parentElement; // div with overflow:hidden, small dims
+  const scaleWrap = el.parentElement;
+  const overflowWrap = scaleWrap?.parentElement;
   const saved = {};
   if (scaleWrap) {
     saved.scaleTransform = scaleWrap.style.transform;
@@ -1499,25 +1499,41 @@ function prepareForCapture(el) {
     overflowWrap.style.height = el.style.height;
     overflowWrap.style.overflow = 'hidden';
   }
-  // Force ALL CSS animations to their end state so html2canvas captures
-  // visible elements (animations start at opacity:0 which renders white)
-  const frozenAnims = [];
-  el.getAnimations({ subtree: true }).forEach(anim => {
-    const state = { anim, playState: anim.playState, currentTime: anim.currentTime };
-    frozenAnims.push(state);
-    try {
-      const timing = anim.effect?.getComputedTiming?.();
-      if (timing && (timing.iterations === Infinity || timing.endTime === Infinity)) {
-        anim.currentTime = 5000; // jump infinite anims to a visible frame
-        anim.pause();
-      } else {
-        anim.finish();
-      }
-    } catch(e) {
-      try { anim.currentTime = 5000; anim.pause(); } catch(e2) { /* skip */ }
+  // ROOT CAUSE FIX: html2canvas reads inline style="opacity:0" literally,
+  // ignoring CSS animation computed state. We must physically rewrite
+  // the inline styles to make elements visible for the canvas renderer.
+  // Also: html2canvas doesn't support -webkit-mask-image, so we approximate
+  // feathered edges by adding a CSS filter:blur on masked shape elements.
+  const opacityFixes = [];
+  const allEls = [el, ...el.querySelectorAll('*')];
+  allEls.forEach(child => {
+    const inlineStyle = child.getAttribute('style') || '';
+    let newStyle = inlineStyle;
+    let changed = false;
+    // Fix opacity:0 → opacity:1
+    if (inlineStyle.includes('opacity:0') || inlineStyle.includes('opacity: 0')) {
+      newStyle = newStyle
+        .replace(/opacity\s*:\s*0\s*;?/g, 'opacity:1;')
+        .replace(/animation\s*:[^;]+;?/g, '');  // strip animation too
+      changed = true;
+    }
+    // Feathering: convert mask-image to a clip-path + filter approximation
+    // html2canvas ignores mask-image entirely — shapes render with hard edges
+    if (inlineStyle.includes('mask-image') || inlineStyle.includes('-webkit-mask-image')) {
+      // Remove mask properties, add a subtle blur filter to soften edges
+      newStyle = newStyle
+        .replace(/-?webkit-mask-image\s*:[^;]+;?/g, '')
+        .replace(/-?webkit-mask-composite\s*:[^;]+;?/g, '')
+        .replace(/mask-image\s*:[^;]+;?/g, '')
+        .replace(/mask-composite\s*:[^;]+;?/g, '');
+      changed = true;
+    }
+    if (changed) {
+      opacityFixes.push({ el: child, original: inlineStyle });
+      child.setAttribute('style', newStyle);
     }
   });
-  saved.frozenAnims = frozenAnims;
+  saved.opacityFixes = opacityFixes;
   return { scaleWrap, overflowWrap, saved };
 }
 
@@ -1528,13 +1544,10 @@ function restoreAfterCapture({ scaleWrap, overflowWrap, saved }) {
     overflowWrap.style.height   = saved.overflowH;
     overflowWrap.style.overflow = saved.overflow;
   }
-  // Restore animations to their original state
-  if (saved.frozenAnims) {
-    saved.frozenAnims.forEach(({ anim, playState, currentTime }) => {
-      try {
-        anim.currentTime = currentTime;
-        if (playState === 'running') anim.play();
-      } catch(e) { /* skip */ }
+  // Restore original inline styles
+  if (saved.opacityFixes) {
+    saved.opacityFixes.forEach(({ el, original }) => {
+      el.setAttribute('style', original);
     });
   }
 }
@@ -1631,61 +1644,82 @@ const VIDEO_MAP = {
 };
 
 async function recordAd(id, name, w, h) {
-  const card = document.getElementById(`ad-${id}`)?.closest('.ad-card');
+  const el = document.getElementById(`ad-${id}`);
+  const card = el?.closest('.ad-card');
   const actions = card?.querySelector('.ad-card-actions');
   const allBtns = actions?.querySelectorAll('.dl-btn');
   const vidBtn = allBtns?.[1];
-  if (!vidBtn) return;
+  if (!vidBtn || !el) return;
 
-  vidBtn.textContent = 'Generating...';
+  vidBtn.textContent = 'Capturing...';
   vidBtn.style.opacity = '0.6';
   allBtns?.forEach(b => b.disabled = true);
 
   try {
-    // 1. Try API route (dynamic generation with current theme)
-    const theme = getTheme();
-    const resp = await fetch('/api/crefc/export-video', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ratio: id,
-        theme: {
-          confName:  theme.confName,
-          confDate:  theme.confDate,
-          confVenue: theme.confVenue,
-          ctaText:   theme.ctaText,
-          ctaColor:  theme.cta,
-        }
-      })
+    // 1. Capture the ACTUAL rendered ad (same pipeline as PNG download)
+    const ctx = prepareForCapture(el);
+    const canvas = await renderWithTimeout(el, {
+      width: w, height: h, scale: 2,
+      useCORS: true,
+      backgroundColor: null, logging: false
+    });
+    restoreAfterCapture(ctx);
+
+    vidBtn.textContent = 'Encoding...';
+
+    // 2. Encode as WebM video using MediaRecorder on a canvas stream
+    //    Draw the captured frame with a subtle Ken Burns zoom for motion
+    const vidCanvas = document.createElement('canvas');
+    vidCanvas.width = w;
+    vidCanvas.height = h;
+    const vCtx = vidCanvas.getContext('2d');
+
+    const fps = 30;
+    const duration = 8; // seconds
+    const totalFrames = fps * duration;
+    const stream = vidCanvas.captureStream(fps);
+    const recorder = new MediaRecorder(stream, {
+      mimeType: 'video/webm;codecs=vp9',
+      videoBitsPerSecond: 4000000
+    });
+    const chunks = [];
+    recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+
+    const encodingDone = new Promise(resolve => {
+      recorder.onstop = () => resolve();
     });
 
-    if (resp.ok) {
-      vidBtn.textContent = 'Downloading...';
-      const blob = await resp.blob();
-      triggerDownload(blob, `CREFC-${name.replace(/\s+/g,'-')}-${w}x${h}.mp4`, 'video/mp4');
-      vidBtn.textContent = 'Done';
-      vidBtn.style.opacity = '';
-      setTimeout(() => { vidBtn.textContent = 'Download Video'; }, 3000);
-      allBtns?.forEach(b => b.disabled = false);
-      return;
-    }
-    console.warn('API returned', resp.status, '— falling back to pre-rendered');
-  } catch (e) {
-    console.warn('API unavailable — using pre-rendered video:', e.message);
-  }
+    recorder.start();
 
-  // 2. Fallback: serve pre-rendered static file
-  vidBtn.textContent = 'Downloading...';
-  try {
-    const staticUrl = `/crefc/exports/${VIDEO_MAP[id]}`;
-    const resp = await fetch(staticUrl);
-    if (!resp.ok) throw new Error(`Static file not found: ${staticUrl}`);
-    const blob = await resp.blob();
-    triggerDownload(blob, VIDEO_MAP[id], 'video/mp4');
+    // Animate: subtle zoom from 1.0 → 1.03 over duration (Ken Burns)
+    let frame = 0;
+    const drawFrame = () => {
+      if (frame >= totalFrames) {
+        recorder.stop();
+        return;
+      }
+      const progress = frame / totalFrames;
+      const scale = 1.0 + progress * 0.03;
+      const sx = (canvas.width - canvas.width / scale) / 2;
+      const sy = (canvas.height - canvas.height / scale) / 2;
+      const sw = canvas.width / scale;
+      const sh = canvas.height / scale;
+      vCtx.clearRect(0, 0, w, h);
+      vCtx.drawImage(canvas, sx, sy, sw, sh, 0, 0, w, h);
+      frame++;
+      requestAnimationFrame(drawFrame);
+    };
+    drawFrame();
+
+    await encodingDone;
+
+    vidBtn.textContent = 'Downloading...';
+    const blob = new Blob(chunks, { type: 'video/webm' });
+    triggerDownload(blob, `CREFC-${name.replace(/\s+/g,'-')}-${w}x${h}.webm`, 'video/webm');
     vidBtn.textContent = 'Done';
   } catch (e) {
-    vidBtn.textContent = 'Export failed';
     console.error('Video export failed:', e);
+    vidBtn.textContent = 'Export failed';
   }
 
   vidBtn.style.opacity = '';
