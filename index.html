@@ -748,18 +748,17 @@ function savePositions() {
 }
 
 function loadPositions() {
+  // Version check: auto-clear stale data when photo defaults change
+  const PHOTO_VERSION = 'v2-centered';
+  if (localStorage.getItem('crefc-photo-version') !== PHOTO_VERSION) {
+    console.log('[MIGRATE] Clearing old photo data for version', PHOTO_VERSION);
+    localStorage.removeItem('crefc-positions');
+    localStorage.removeItem('crefc-mastered-tx');
+    localStorage.removeItem('crefc-photoPos');
+    localStorage.setItem('crefc-photo-version', PHOTO_VERSION);
+    return; // Start fresh
+  }
   let raw = localStorage.getItem('crefc-positions');
-  // Load photo positions for Plus CDs
-  try {
-    const ppRaw = localStorage.getItem('crefc-photoPos');
-    if (ppRaw) {
-      const ppData = JSON.parse(ppRaw);
-      Object.entries(ppData).forEach(([cd, pp]) => {
-        formatOffset[cd + '-photoPos'] = pp;
-      });
-    }
-  } catch(e) {}
-  if (!raw) raw = localStorage.getItem('crefc-mastered-tx');
   if (!raw) return;
   try {
     const stored = JSON.parse(raw);
