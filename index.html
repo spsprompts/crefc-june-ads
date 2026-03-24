@@ -8,8 +8,8 @@
   <!-- Gotham (local) + Montserrat fallback + Inter body -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Montserrat:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&family=Outfit:wght@200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="html2canvas.min.js"></script>
+  <script src="jszip.min.js"></script>
   <style>
     :root {
       --bg: #050505;
@@ -392,10 +392,31 @@
     }
     .save-flash { animation:saveFlash 0.6s ease; }
 
-    /* Package download progress */
-    .pkg-progress {
-      display:inline-block; font:500 11px/1 'Outfit', sans-serif;
-      color:var(--cyan); margin-left:8px;
+    /* Package progress bar */
+    .pkg-bar-wrap {
+      margin-top:8px; padding:0;
+    }
+    .pkg-bar-track {
+      width:100%; height:4px; background:rgba(255,255,255,0.06);
+      border-radius:2px; overflow:hidden;
+    }
+    .pkg-bar-fill {
+      height:100%; width:0%; border-radius:2px;
+      background:linear-gradient(90deg, var(--crefc-teal), var(--cyan));
+      transition:width 0.3s ease;
+      box-shadow:0 0 8px rgba(0,240,255,0.3);
+    }
+    .pkg-bar-label {
+      display:block; text-align:center; margin-top:4px;
+      font:500 10px/1 'Outfit', sans-serif; color:var(--text-dim);
+      letter-spacing:0.5px; text-transform:uppercase;
+    }
+
+    /* Section button active rendering state */
+    .section-dl-btn.rendering {
+      opacity:0.6; cursor:wait;
+      background:rgba(0,240,255,0.06);
+      border-color:rgba(0,240,255,0.2);
     }
 
     @media (max-width:900px) {
@@ -543,7 +564,11 @@
         <div style="height:8px;"></div>
         <button class="ctrl-btn" onclick="renderAll()">Apply Changes</button>
         <div style="height:6px;"></div>
-        <button class="ctrl-btn" onclick="downloadPackage()" id="pkgBtn" style="background:linear-gradient(135deg,rgba(0,240,255,0.08),rgba(0,200,150,0.08));border-color:rgba(0,240,255,0.15);">📦 Download Complete Package</button>
+        <button class="ctrl-btn" onclick="downloadPackage()" id="pkgBtn" style="background:linear-gradient(135deg,rgba(0,240,255,0.08),rgba(0,200,150,0.08));border-color:rgba(0,240,255,0.15);">Download Complete Package</button>
+        <div id="pkgProgress" class="pkg-bar-wrap" style="display:none;">
+          <div class="pkg-bar-track"><div class="pkg-bar-fill" id="pkgFill"></div></div>
+          <span class="pkg-bar-label" id="pkgLabel">Preparing...</span>
+        </div>
       </div>
     </aside>
 
@@ -551,13 +576,13 @@
     <main class="canvas-area">
       <h2>Social Media Formats</h2>
       <div class="ad-grid" id="socialGrid"></div>
-      <div class="section-dl"><button class="section-dl-btn" onclick="downloadSection('social')">⬇ Download All Social</button></div>
+      <div class="section-dl"><button class="section-dl-btn" onclick="downloadSection('social')">Download All Social</button></div>
       <h2>IAB Web Advertising</h2>
       <div class="ad-grid" id="webGrid"></div>
-      <div class="section-dl"><button class="section-dl-btn" onclick="downloadSection('web')">⬇ Download All Web Ads</button></div>
+      <div class="section-dl"><button class="section-dl-btn" onclick="downloadSection('web')">Download All Web Ads</button></div>
       <h2>Email Marketing</h2>
       <div class="ad-grid" id="emailGrid"></div>
-      <div class="section-dl"><button class="section-dl-btn" onclick="downloadSection('email')">⬇ Download All Email</button></div>
+      <div class="section-dl"><button class="section-dl-btn" onclick="downloadSection('email')">Download All Email</button></div>
       <div class="dashboard-footer">
         <strong>Corporate Optics</strong> · Steven Simmons · CREFC 2026<br>
         <a href="/briefings/">← Back to Briefing Center</a>
@@ -1442,20 +1467,35 @@ function renderAll() {
 }
 
 /* ── Download ────────────────────────────────────────────────── */
+/* html2canvas with timeout + CORS fallback */
+function renderWithTimeout(el, opts, ms = 30000) {
+  return Promise.race([
+    html2canvas(el, opts),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Render timeout')), ms))
+  ]);
+}
+
 async function downloadAd(id, name, w, h) {
   const el = document.getElementById(`ad-${id}`);
   if (!el) return;
   const card = el.closest('.ad-card');
   const btn = card?.querySelector('.dl-btn');
-  if (btn) { btn.textContent = '⏳ Rendering...'; }
+  if (btn) { btn.textContent = 'Rendering...'; btn.style.opacity = '0.5'; }
   try {
-    const canvas = await html2canvas(el, { width:w, height:h, scale:2, useCORS:true, backgroundColor:null, logging:false });
+    const canvas = await renderWithTimeout(el, {
+      width:w, height:h, scale:2,
+      useCORS:true, allowTaint:true,
+      backgroundColor:null, logging:false
+    });
     const link = document.createElement('a');
     link.download = `CREFC-${name.replace(/\s+/g,'-')}-${w}x${h}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
-  } catch(e) { console.error('Download failed:', e); }
-  if (btn) { btn.textContent = 'Done'; setTimeout(() => { btn.textContent = 'Download PNG'; }, 2000); }
+    if (btn) { btn.textContent = 'Downloaded'; setTimeout(() => { btn.textContent = 'Download PNG'; btn.style.opacity = ''; }, 2000); }
+  } catch(e) {
+    console.error('Download failed:', e);
+    if (btn) { btn.textContent = 'Failed — Retry'; btn.style.opacity = ''; setTimeout(() => { btn.textContent = 'Download PNG'; }, 4000); }
+  }
 }
 
 async function downloadAll() {
@@ -1468,28 +1508,51 @@ async function downloadSection(section) {
   const specs = AD_SPECS[section];
   if (!specs) return;
   const btns = document.querySelectorAll('.section-dl-btn');
-  btns.forEach(b => b.disabled = true);
-  for (const s of specs) {
+  btns.forEach(b => { b.disabled = true; b.classList.add('rendering'); });
+
+  const sectionBtn = [...btns].find(b => b.onclick?.toString().includes(section));
+  for (let i = 0; i < specs.length; i++) {
+    const s = specs[i];
+    if (sectionBtn) sectionBtn.textContent = `Rendering ${i+1} of ${specs.length}`;
     await downloadAd(s.id, s.name, s.w, s.h);
     await new Promise(r => setTimeout(r, 500));
   }
-  btns.forEach(b => b.disabled = false);
+
+  const labels = { social:'Download All Social', web:'Download All Web Ads', email:'Download All Email' };
+  btns.forEach(b => { b.disabled = false; b.classList.remove('rendering'); });
+  if (sectionBtn) sectionBtn.textContent = labels[section] || 'Download All';
 }
 
 /* ── Render ad to blob (shared helper) ──────────────────────── */
 async function renderAdToBlob(id, w, h) {
   const el = document.getElementById(`ad-${id}`);
   if (!el) return null;
-  const canvas = await html2canvas(el, { width:w, height:h, scale:2, useCORS:true, backgroundColor:null, logging:false });
-  return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+  try {
+    const canvas = await renderWithTimeout(el, {
+      width:w, height:h, scale:2,
+      useCORS:true, allowTaint:true,
+      backgroundColor:null, logging:false
+    });
+    return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+  } catch(e) {
+    console.error(`Render failed for ${id}:`, e);
+    return null;
+  }
 }
 
 /* ── Download Complete Package (ZIP) ────────────────────────── */
 async function downloadPackage() {
   const btn = document.getElementById('pkgBtn');
+  const bar = document.getElementById('pkgProgress');
+  const fill = document.getElementById('pkgFill');
+  const label = document.getElementById('pkgLabel');
   const origText = btn.textContent;
+
   btn.disabled = true;
-  btn.textContent = '⏳ Rendering...';
+  btn.textContent = 'Rendering Assets...';
+  bar.style.display = 'block';
+  fill.style.width = '0%';
+  label.textContent = 'Preparing...';
 
   const zip = new JSZip();
   const cdName = { A:'Classic', B:'Skyline', C:'DarkLuxe', D:'Classic-Plus', E:'Skyline-Plus', F:'DarkLuxe-Plus' }[currentCD] || currentCD;
@@ -1501,22 +1564,29 @@ async function downloadPackage() {
 
   let done = 0;
   const total = [...AD_SPECS.social, ...AD_SPECS.web, ...AD_SPECS.email].length;
+  let failed = 0;
 
   for (const { folder, specs } of sections) {
     const subFolder = zip.folder(folder);
     for (const s of specs) {
       done++;
-      btn.textContent = `⏳ ${done}/${total}`;
+      const pct = Math.round((done / total) * 100);
+      fill.style.width = pct + '%';
+      label.textContent = `${s.name} · ${done} of ${total}`;
+      btn.textContent = `Rendering ${done}/${total}`;
+
       const blob = await renderAdToBlob(s.id, s.w, s.h);
       if (blob) {
         const fname = `CREFC-${cdName}-${s.name.replace(/[\s\/]+/g,'-')}-${s.w}x${s.h}.png`;
         subFolder.file(fname, blob);
-      }
+      } else { failed++; }
       await new Promise(r => setTimeout(r, 200));
     }
   }
 
-  btn.textContent = '📦 Zipping...';
+  btn.textContent = 'Packaging ZIP...';
+  fill.style.width = '100%';
+  label.textContent = 'Compressing...';
   const content = await zip.generateAsync({ type:'blob' });
   const link = document.createElement('a');
   link.download = `CREFC-${cdName}-Package.zip`;
@@ -1524,9 +1594,10 @@ async function downloadPackage() {
   link.click();
   URL.revokeObjectURL(link.href);
 
-  btn.textContent = '✅ Done';
+  label.textContent = failed > 0 ? `Complete · ${failed} failed` : 'Complete';
+  btn.textContent = 'Package Downloaded';
   btn.disabled = false;
-  setTimeout(() => { btn.textContent = origText; }, 3000);
+  setTimeout(() => { btn.textContent = origText; bar.style.display = 'none'; }, 4000);
 }
 
 function saveTheme() {

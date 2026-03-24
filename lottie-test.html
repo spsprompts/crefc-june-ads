@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>CREFC Lottie Test</title>
+  <style>
+    body { margin:0; background:#1a2332; display:flex; align-items:center; justify-content:center; min-height:100vh; font-family:system-ui; color:#fff; }
+    .container { text-align:center; }
+    h2 { margin-bottom:20px; opacity:0.7; font-weight:300; }
+    .preview { position:relative; width:600px; height:400px; background:linear-gradient(135deg, #349EA0 0%, #267072 50%, #1a4d4e 100%); border-radius:12px; overflow:hidden; }
+    .lottie-wrap { position:absolute; bottom:0; left:0; width:80%; height:auto;
+      -webkit-mask-image:radial-gradient(ellipse 110% 110% at 0% 100%, black 40%, transparent 75%);
+      mask-image:radial-gradient(ellipse 110% 110% at 0% 100%, black 40%, transparent 75%);
+    }
+    .text-overlay { position:absolute; top:40px; left:40px; z-index:2; }
+    .text-overlay h1 { font-size:28px; margin:0 0 8px 0; letter-spacing:0.02em; }
+    .text-overlay p { font-size:14px; opacity:0.8; margin:0; }
+    .info { margin-top:20px; opacity:0.5; font-size:13px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Lottie Recreation — CREFC Shapes</h2>
+    <div class="preview">
+      <div class="text-overlay">
+        <p style="color:#ef8832;font-weight:600;letter-spacing:0.1em;font-size:12px;">JUNE 8-10, 2026</p>
+        <h1>CREFC ANNUAL<br>CONFERENCE</h1>
+        <p>New York Marriott Marquis</p>
+      </div>
+      <div class="lottie-wrap">
+        <div id="lottie-player"></div>
+      </div>
+    </div>
+    <p class="info">Lottie JSON: ~4KB | Infinite loop | Vector-based, resolution-independent</p>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
+  <script>
+    lottie.loadAnimation({
+      container: document.getElementById('lottie-player'),
+      renderer: 'svg',
+      loop: true,
+      autoplay: true,
+      path: '02_Source_Assets/crefc-shapes-lottie.json'
+    });
+  </script>
+</body>
+</html>
